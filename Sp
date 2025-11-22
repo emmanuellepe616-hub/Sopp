@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOP Risk Analytics | Herramienta de Pre-Diagnóstico</title>
+    <!-- Fuente profesional -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- VARS & RESET --- */
+        :root {
+            --primary: #6a1b9a;
+            --primary-light: #9c4dcc;
+            --accent: #00bfa5; /* Teal para contraste médico */
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --text-main: #2c3e50;
+            --text-sec: #636e72;
+            --danger: #e17055;
+            --warning: #fdcb6e;
+            --success: #00b894;
+            --radius: 16px;
+            --shadow: 0 8px 30px rgba(0,0,0,0.08);
+            --ai-gradient: linear-gradient(135deg, #6a1b9a 0%, #ff4081 100%);
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* --- LAYOUT --- */
+        .app-container {
+            background: var(--surface);
+            width: 100%;
+            max-width: 900px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            overflow: hidden;
+            min-height: 600px;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar {
+            background: linear-gradient(160deg, var(--primary), #4a148c);
+            color: white;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .brand h2 { margin: 0; font-weight: 700; letter-spacing: -1px; }
+        .brand span { font-weight: 300; font-size: 0.9rem; opacity: 0.8; }
+
+        .steps-nav {
+            list-style: none;
+            padding: 0;
+            margin-top: 40px;
+        }
+
+        .step-item {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .step-item.active {
+            color: white;
+            font-weight: 600;
+        }
+
+        .step-number {
+            background: rgba(255,255,255,0.2);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        
+        .step-item.active .step-number {
+            background: var(--accent);
+            color: var(--primary);
+        }
+
+        .copyright { font-size: 0.7rem; opacity: 0.5; }
+
+        /* --- MAIN CONTENT --- */
+        .main-content {
+            padding: 40px;
+            position: relative;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            color: var(--primary);
+        }
+
+        .section-subtitle {
+            color: var(--text-sec);
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        /* --- FORM ELEMENTS --- */
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .form-group { margin-bottom: 20px; position: relative; }
+        
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-main);
+        }
+
+        /* Tooltip '?' */
+        .info-icon {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            background: #eee;
+            color: #666;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 16px;
+            font-size: 10px;
+            cursor: help;
+            margin-left: 5px;
+        }
+        
+        .info-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            width: 200px;
+            z-index: 10;
+            font-weight: 400;
+        }
+
+        input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-family: inherit;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.1);
+        }
+
+        /* Custom Checkbox Cards */
+        .symptom-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .symptom-card {
+            position: relative;
+        }
+
+        .symptom-card input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .checkmark {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+            height: 100%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+        }
+
+        .checkmark:hover { background: #fcfcfc; border-color: #ccc; }
+
+        .symptom-card input:checked ~ .checkmark {
+            background: #f3e5f5;
+            border-color: var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px var(--primary);
+        }
+
+        /* --- BUTTONS --- */
+        .actions {
+            margin-top: 40px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: 0.3s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(106, 27, 154, 0.3);
+        }
+        
+        .btn-primary:hover { background: var(--primary-light); transform: translateY(-2px); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-sec);
+        }
+        
+        .btn-ghost:hover { background: #eee; }
+
+        .btn-ai {
+            background: var(--ai-gradient);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 64, 129, 0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn-ai:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(255, 64, 129, 0.4);
+        }
+
+        /* --- RESULTS VIEW --- */
+        #resultsView { display: none; animation: fadeIn 0.5s; }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        /* GAUGE CHART */
+        .gauge-wrapper {
+            position: relative;
+            width: 200px;
+            height: 100px; /* Half circle */
+            margin: 0 auto 20px;
+            overflow: hidden;
+        }
+        
+        .gauge-bg {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: #eee;
+            position: absolute;
+            top: 0;
+        }
+
+        .gauge-fill {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: conic-gradient(
+                var(--success) 0% 33%, 
+                var(--warning) 33% 66%, 
+                var(--danger) 66% 100%
+            );
+            position: absolute;
+            top: 0;
+            transform: rotate(-90deg); /* Start point */
+            transition: transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            mask: radial-gradient(transparent 60%, black 61%);
+            -webkit-mask: radial-gradient(transparent 60%, black 61%);
+        }
+
+        .gauge-needle {
+            width: 4px;
+            height: 90px;
+            background: #333;
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform-origin: bottom center;
+            transform: rotate(-90deg);
+            transition: transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+            border-radius: 4px;
+            z-index: 2;
+        }
+        
+        .gauge-hub {
+            width: 16px;
+            height: 16px;
+            background: #333;
+            border-radius: 50%;
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+        }
+
+        .metrics-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .metric-card {
+            flex: 1;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .metric-val { display: block; font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+        .metric-label { font-size: 0.8rem; color: var(--text-sec); }
+
+        .advice-box {
+            background: #e8f5e9;
+            padding: 20px;
+            border-left: 4px solid var(--success);
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        
+        .advice-box.high-risk { background: #ffebee; border-color: var(--danger); }
+        .advice-box.med-risk { background: #fff8e1; border-color: var(--warning); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- AI SECTION STYLES --- */
+        .ai-section {
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+
+        .ai-result-box {
+            background: #fcf4fc;
+            border: 1px solid #f8bbd0;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: #4a148c;
+            display: none;
+            position: relative;
+        }
+        
+        .ai-result-box h3 { margin-top: 0; color: #880e4f; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; }
+        
+        .loading-spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* --- PRINT STYLES (MEDICAL REPORT) --- */
+        @media print {
+            @page { margin: 2cm; }
+            body { background: white; padding: 0; display: block; }
+            .app-container { 
+                box-shadow: none; 
+                max-width: 100%; 
+                display: block; 
+                border: none;
+            }
+            .sidebar, .actions, .info-icon, .step-nav, .btn-ai { display: none !important; }
+            
+            #inputSection { display: none; }
+            #resultsView { display: block !important; animation: none; }
+            
+            .header-print {
+                display: block !important;
+                border-bottom: 2px solid var(--primary);
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }
+            
+            .gauge-wrapper { display: none; } 
+            
+            .print-score {
+                display: block !important;
+                font-size: 2rem;
+                font-weight: bold;
+                color: var(--primary);
+                margin: 20px 0;
+                padding: 10px;
+                border: 1px solid #ddd;
+                text-align: center;
+            }
+            
+            /* Allow AI recommendations to print if generated */
+            .ai-result-box { 
+                display: block !important; 
+                border: 1px solid #ccc;
+                background: white;
+            }
+
+            .footer-print {
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+                text-align: center;
+                font-size: 0.8rem;
+                color: #999;
+                border-top: 1px solid #ddd;
+                padding-top: 10px;
+                display: block !important;
+            }
+        }
+        
+        .header-print, .footer-print, .print-score { display: none; }
+
+        /* Mobile Responsive */
+        @media (max-width: 700px) {
+            .app-container { grid-template-columns: 1fr; height: auto; }
+            .sidebar { padding: 20px; flex-direction: row; align-items: center; }
+            .steps-nav { display: none; }
+            .input-grid { grid-template-columns: 1fr; }
+            .actions { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <!-- Barra Lateral -->
+    <aside class="sidebar">
+        <div class="brand">
+            <h2>SOP<span style="color:var(--accent)">Analytics</span></h2>
+            <span>Herramienta de Tamizaje</span>
+        </div>
+
+        <ul class="steps-nav">
+            <li class="step-item active" id="navStep1">
+                <span class="step-number">1</span>
+                <span>Datos Biométricos</span>
+            </li>
+            <li class="step-item" id="navStep2">
+                <span class="step-number">2</span>
+                <span>Sintomatología</span>
+            </li>
+            <li class="step-item" id="navStep3">
+                <span class="step-number">3</span>
+                <span>Resultados</span>
+            </li>
+        </ul>
+
+        <div class="copyright">
+            &copy; 2025 Univ. Project<br>
+            Basado en Criterios de Rotterdam<br>
+            Powered by Gemini AI ✨
+        </div>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <main class="main-content">
+        
+        <!-- Encabezado para Impresión -->
+        <div class="header-print">
+            <h1>Informe de Evaluación de Riesgo</h1>
+            <p>Generado por SOP Analytics - Herramienta de Apoyo al Diagnóstico</p>
+            <p><strong>Fecha:</strong> <span id="printDate"></span></p>
+        </div>
+
+        <!-- SECCIÓN DE ENTRADA (Formulario) -->
+        <div id="inputSection">
+            <h2 class="section-title">Datos del Paciente</h2>
+            <p class="section-subtitle">Ingrese los datos fisiológicos para calcular los marcadores metabólicos.</p>
+
+            <form id="mainForm">
+                <div class="input-grid">
+                    <div class="form-group">
+                        <label>Edad (años)</label>
+                        <input type="number" id="age" placeholder="20" min="12" max="60">
+                    </div>
+                    <div class="form-group">
+                        <label>Peso (kg)</label>
+                        <input type="number" id="weight" placeholder="65.5" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Altura (cm)</label>
+                        <input type="number" id="height" placeholder="165">
+                    </div>
+                    <div class="form-group">
+                        <label>Cintura (cm) <span class="info-icon" data-tooltip="Medida justo encima del ombligo. Importante para riesgo metabólico.">?</span></label>
+                        <input type="number" id="waist" placeholder="80">
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h2 class="section-title">Cuadro Clínico</h2>
+                    <p class="section-subtitle">Seleccione los signos y síntomas presentes en los últimos 6 meses.</p>
+                    
+                    <div class="symptom-grid">
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="30" data-name="Irregularidad Menstrual">
+                            <span class="checkmark">Irregularidad Menstrual (Ciclos > 35 días)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="25" data-name="Hirsutismo (Exceso vello)">
+                            <span class="checkmark">Hirsutismo (Vello facial/corporal excesivo)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="15" data-name="Acné Androgénico">
+                            <span class="checkmark">Acné Androgénico (Mandíbula/Espalda)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="15" data-name="Alopecia Androgénica">
+                            <span class="checkmark">Alopecia (Caída de cabello patrón central)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="10" data-name="Acantosis Nigricans">
+                            <span class="checkmark">Acantosis Nigricans (Manchas oscuras en cuello)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="10" data-name="Antecedentes Familiares">
+                            <span class="checkmark">Antecedentes Familiares de SOP/Diabetes</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('mainForm').reset()">Limpiar</button>
+                    <button type="submit" class="btn btn-primary">Analizar Riesgo &rarr;</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- SECCIÓN DE RESULTADOS -->
+        <div id="resultsView">
+            <div class="result-header">
+                <h2>Análisis Completado</h2>
+                <p>Basado en los datos proporcionados</p>
+            </div>
+
+            <!-- GAUGE VISUALIZACIÓN -->
+            <div class="gauge-wrapper">
+                <div class="gauge-bg"></div>
+                <div class="gauge-fill"></div> <!-- Máscara visual -->
+                <div class="gauge-needle" id="needle"></div>
+                <div class="gauge-hub"></div>
+            </div>
+            
+            <div class="print-score" id="printScoreText"></div>
+
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 2rem; margin: 10px 0;" id="riskTitle">Calculando...</h1>
+                <p style="color: var(--text-sec);" id="riskSubtitle">Probabilidad estimada</p>
+            </div>
+
+            <div class="metrics-container">
+                <div class="metric-card">
+                    <span class="metric-val" id="displayIMC">-</span>
+                    <span class="metric-label">IMC (kg/m²)</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-val" id="displayICA">-</span>
+                    <span class="metric-label">ICA (Cintura/Altura)</span>
+                </div>
+            </div>
+
+            <div class="advice-box" id="adviceBox">
+                <!-- JS Injects content here -->
+            </div>
+
+            <!-- AI SECTION -->
+            <div class="ai-section">
+                <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                     <button type="button" class="btn btn-ai" id="aiButton" onclick="generateAIPlan()">
+                        <div class="loading-spinner" id="aiSpinner"></div>
+                        <span id="aiBtnText">✨ Generar Plan de Bienestar Personalizado con IA</span>
+                    </button>
+                </div>
+                
+                <div id="aiResult" class="ai-result-box">
+                    <h3><span style="font-size:1.5rem;">✨</span> Recomendaciones de tu Asistente IA</h3>
+                    <div id="aiContent"></div>
+                    <div style="font-size: 0.7rem; margin-top: 15px; color: #888; border-top: 1px dashed #ccc; padding-top: 5px;">
+                        IA Generativa (Gemini) - Resultados basados en patrones generales. No sustituye consejo médico profesional.
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
+                <button type="button" class="btn btn-ghost" onclick="location.reload()">Nueva Evaluación</button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">Descargar Informe PDF</button>
+            </div>
+
+            <div style="margin-top: 30px; font-size: 0.8rem; color: #999;">
+                <strong>Nota Metodológica:</strong> Este algoritmo pondera los criterios de Rotterdam (2003) junto con marcadores de riesgo metabólico (IMC e ICA). No sustituye una ecografía transvaginal ni perfil hormonal sanguíneo.
+            </div>
+        </div>
+
+        <div class="footer-print">
+            Documento generado con fines educativos e informativos. Consulte a su especialista.
+        </div>
+    </main>
+</div>
+
+<script>
+    // Global var to store prompt data
+    let patientData = {};
+    const apiKey = ""; // API KEY will be injected by environment
+
+    document.getElementById('mainForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // 1. RECOLECCIÓN DE DATOS
+        const age = document.getElementById('age').value;
+        const weight = parseFloat(document.getElementById('weight').value) || 0;
+        const heightCm = parseFloat(document.getElementById('height').value) || 0;
+        const waist = parseFloat(document.getElementById('waist').value) || 0;
+        const heightM = heightCm / 100;
+
+        if(heightCm === 0 || weight === 0) {
+            alert("Por favor ingresa peso y altura válidos.");
+            return;
+        }
+
+        // 2. CÁLCULOS METABÓLICOS
+        const imc = weight / (heightM * heightM);
+        const ica = waist / heightCm; // Índice Cintura-Altura
+
+        // 3. ALGORITMO DE PUNTUACIÓN
+        let score = 0;
+        let symptomsList = [];
+
+        // Síntomas directos
+        document.querySelectorAll('.symptom:checked').forEach(el => {
+            score += parseInt(el.value);
+            symptomsList.push(el.getAttribute('data-name'));
+        });
+
+        // Factores metabólicos (Agravantes)
+        if(imc > 25) score += 5;
+        if(imc > 30) score += 10;
+        if(ica > 0.5) score += 10;
+        if(ica > 0.6) score += 15;
+
+        // 4. LÓGICA DE VISUALIZACIÓN
+        let riskPercentage = (score / 80) * 100; 
+        if (riskPercentage > 100) riskPercentage = 100;
+        const rotation = (riskPercentage * 1.8) - 90; 
+
+        // 5. DETERMINACIÓN DE TEXTOS
+        let title, subtitle, advice, adviceClass;
+
+        if (score < 25) {
+            title = "Riesgo Bajo";
+            subtitle = "Perfil asintomático o leve";
+            adviceClass = "";
+            advice = "<strong>Recomendación:</strong> Tus marcadores son saludables. Mantén un estilo de vida activo.";
+            document.documentElement.style.setProperty('--success', '#00b894');
+        } else if (score < 50) {
+            title = "Riesgo Moderado";
+            subtitle = "Posibles signos de hiperandrogenismo";
+            adviceClass = "med-risk";
+            advice = "<strong>Atención:</strong> Presentas algunos criterios compatibles. Se sugiere realizar perfil hormonal.";
+        } else {
+            title = "Riesgo Alto";
+            subtitle = "Alta concordancia con Criterios de Rotterdam";
+            adviceClass = "high-risk";
+            advice = "<strong>Acción Requerida:</strong> Tus síntomas sugieren fuertemente SOP. Agenda cita con Endocrinología.";
+        }
+
+        // Store data for AI
+        patientData = {
+            age: age,
+            bmi: imc.toFixed(1),
+            waist: waist,
+            risk: title,
+            symptoms: symptomsList.join(", ") || "Ninguno reportado"
+        };
+
+        // 6. ACTUALIZACIÓN DEL DOM
+        document.getElementById('inputSection').style.display = 'none';
+        document.getElementById('resultsView').style.display = 'block';
+        
+        document.getElementById('riskTitle').innerText = title;
+        document.getElementById('riskSubtitle').innerText = subtitle;
+        document.getElementById('displayIMC').innerText = imc.toFixed(1);
+        document.getElementById('displayICA').innerText = ica.toFixed(2);
+        
+        const adviceBox = document.getElementById('adviceBox');
+        adviceBox.innerHTML = advice;
+        adviceBox.className = 'advice-box ' + adviceClass;
+
+        document.getElementById('printDate').innerText = new Date().toLocaleDateString();
+        document.getElementById('printScoreText').innerText = title + " (Score: " + score + ")";
+
+        document.getElementById('navStep1').classList.remove('active');
+        document.getElementById('navStep2').classList.remove('active');
+        document.getElementById('navStep3').classList.add('active');
+
+        setTimeout(() => {
+            document.getElementById('needle').style.transform = `rotate(${rotation}deg)`;
+        }, 100);
+    });
+
+    // --- FUNCIONALIDAD IA GEMINI ---
+    async function generateAIPlan() {
+        const btn = document.getElementById('aiButton');
+        const spinner = document.getElementById('aiSpinner');
+        const btnText = document.getElementById('aiBtnText');
+        const resultBox = document.getElementById('aiResult');
+        const contentDiv = document.getElementById('aiContent');
+
+        // UI Loading State
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        btnText.innerText = "Analizando con IA...";
+        resultBox.style.display = 'none';
+
+        // Construct Prompt
+        const prompt = `
+            Actúa como un experto coach de salud femenina empático y profesional. 
+            Tengo una paciente con los siguientes datos preliminares de un test de riesgo de SOP (Síndrome de Ovario Poliquístico):
+            - Nivel de Riesgo Calculado: ${patientData.risk}
+            - Edad: ${patientData.age} años
+            - IMC: ${patientData.bmi}
+            - Síntomas reportados: ${patientData.symptoms}
+
+            Por favor, genera 3 recomendaciones breves, específicas y accionables en las siguientes categorías:
+            1. 🥗 Nutrición (basado en sus síntomas metabólicos si los hay).
+            2. 🏃‍♀️ Actividad Física (recomendación realista).
+            3. 🧘‍♀️ Hábito de Estilo de Vida (sueño, estrés, etc).
+
+            Formato de respuesta: Usa HTML simple (<ul>, <li>, <b>) para dar formato.
+            Tono: Empático, positivo, pero muy claro en que NO eres un doctor.
+            Importante: Termina con una frase motivadora corta.
+        `;
+
+        try {
+            const response = await callGeminiAPI(prompt);
+            contentDiv.innerHTML = response;
+            resultBox.style.display = 'block';
+            btnText.innerText = "✨ Plan Generado Exitosamente";
+            
+            // Scroll to AI result
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        } catch (error) {
+            console.error(error);
+            alert("Hubo un error conectando con la IA. Por favor intenta de nuevo.");
+            btnText.innerText = "✨ Reintentar Generar Plan";
+            btn.disabled = false;
+        } finally {
+            spinner.style.display = 'none';
+        }
+    }
+
+    async function callGeminiAPI(userPrompt) {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+        
+        const payload = {
+            contents: [{
+                parts: [{ text: userPrompt }]
+            }]
+        };
+
+        // Simple retry logic (exponential backoff lite)
+        let retries = 3;
+        let delay = 1000;
+
+        for (let i = 0; i < retries; i++) {
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+
+                const data = await response.json();
+                return data.candidates[0].content.parts[0].text;
+            } catch (err) {
+                if (i === retries - 1) throw err;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                delay *= 2;
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
