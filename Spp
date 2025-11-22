@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOP Risk Analytics | Herramienta de Pre-Diagnóstico</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- ESTILOS CSS --- */
+        :root {
+            --primary: #6a1b9a;
+            --primary-light: #9c4dcc;
+            --accent: #00bfa5;
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --text-main: #2c3e50;
+            --text-sec: #636e72;
+            --danger: #e17055;
+            --warning: #fdcb6e;
+            --success: #00b894;
+            --radius: 16px;
+            --shadow: 0 8px 30px rgba(0,0,0,0.08);
+            --ai-gradient: linear-gradient(135deg, #6a1b9a 0%, #ff4081 100%);
+        }
+
+        * { box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .app-container {
+            background: var(--surface);
+            width: 100%;
+            max-width: 900px;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            overflow: hidden;
+            min-height: 600px;
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            background: linear-gradient(160deg, var(--primary), #4a148c);
+            color: white;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .brand h2 { margin: 0; font-weight: 700; letter-spacing: -1px; }
+        .steps-nav { list-style: none; padding: 0; margin-top: 40px; }
+        .step-item { padding: 15px 0; border-bottom: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); display: flex; align-items: center; gap: 10px; transition: 0.3s; }
+        .step-item.active { color: white; font-weight: 600; }
+        .step-number { background: rgba(255,255,255,0.2); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; }
+        .step-item.active .step-number { background: var(--accent); color: var(--primary); }
+        .copyright { font-size: 0.7rem; opacity: 0.5; }
+
+        /* CONTENIDO */
+        .main-content { padding: 40px; position: relative; overflow-y: auto; }
+        .section-title { font-size: 1.5rem; margin-bottom: 5px; color: var(--primary); }
+        .section-subtitle { color: var(--text-sec); font-size: 0.9rem; margin-bottom: 30px; }
+
+        /* FORMULARIOS */
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 8px; }
+        input[type="number"] { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; transition: 0.3s; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(106, 27, 154, 0.1); }
+
+        /* SÍNTOMAS */
+        .symptom-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .symptom-card { position: relative; }
+        .symptom-card input { position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0; }
+        .checkmark { display: flex; align-items: center; padding: 15px; background: white; border: 1px solid #eee; border-radius: 8px; cursor: pointer; transition: 0.2s; font-size: 0.9rem; height: 100%; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .checkmark:hover { background: #fcfcfc; border-color: #ccc; }
+        .symptom-card input:checked ~ .checkmark { background: #f3e5f5; border-color: var(--primary); color: var(--primary); font-weight: 600; box-shadow: inset 0 0 0 1px var(--primary); }
+
+        /* BOTONES */
+        .actions { margin-top: 40px; display: flex; justify-content: flex-end; gap: 15px; flex-wrap: wrap; }
+        .btn { padding: 12px 30px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.3s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 15px rgba(106, 27, 154, 0.3); }
+        .btn-primary:hover { transform: translateY(-2px); background: var(--primary-light); }
+        .btn-ghost { background: transparent; color: var(--text-sec); }
+        .btn-ai { background: var(--ai-gradient); color: white; box-shadow: 0 4px 15px rgba(255, 64, 129, 0.3); border: 1px solid rgba(255,255,255,0.2); }
+        .btn-ai:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 6px 20px rgba(255, 64, 129, 0.4); }
+        .btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+
+        /* RESULTADOS */
+        #resultsView { display: none; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* GAUGE CHART */
+        .gauge-wrapper { position: relative; width: 200px; height: 100px; margin: 0 auto 20px; overflow: hidden; }
+        .gauge-bg { width: 200px; height: 200px; border-radius: 50%; background: #eee; position: absolute; top: 0; }
+        .gauge-fill { width: 200px; height: 200px; border-radius: 50%; background: conic-gradient(var(--success) 0% 33%, var(--warning) 33% 66%, var(--danger) 66% 100%); position: absolute; top: 0; transform: rotate(-90deg); mask: radial-gradient(transparent 60%, black 61%); -webkit-mask: radial-gradient(transparent 60%, black 61%); }
+        .gauge-needle { width: 4px; height: 90px; background: #333; position: absolute; bottom: 0; left: 50%; transform-origin: bottom center; transform: rotate(-90deg); transition: transform 1.5s cubic-bezier(0.2, 0.8, 0.2, 1); border-radius: 4px; z-index: 2; }
+        .gauge-hub { width: 16px; height: 16px; background: #333; border-radius: 50%; position: absolute; bottom: -8px; left: 50%; transform: translateX(-50%); z-index: 3; }
+
+        .metrics-container { display: flex; gap: 15px; margin-bottom: 25px; }
+        .metric-card { flex: 1; background: #f8f9fa; padding: 15px; border-radius: 10px; text-align: center; }
+        .metric-val { display: block; font-size: 1.4rem; font-weight: 700; color: var(--primary); }
+        .metric-label { font-size: 0.8rem; color: var(--text-sec); }
+
+        .advice-box { background: #e8f5e9; padding: 20px; border-left: 4px solid var(--success); border-radius: 4px; margin-bottom: 20px; }
+        .advice-box.high-risk { background: #ffebee; border-color: var(--danger); }
+        .advice-box.med-risk { background: #fff8e1; border-color: var(--warning); }
+
+        /* AI SECTION */
+        .ai-section { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        .ai-result-box { background: #fcf4fc; border: 1px solid #f8bbd0; border-radius: 12px; padding: 20px; margin-top: 20px; font-size: 0.95rem; line-height: 1.6; color: #4a148c; display: none; }
+        .ai-result-box h3 { margin-top: 0; color: #880e4f; }
+        .loading-spinner { display: none; width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top-color: white; animation: spin 1s ease-in-out infinite; margin-right: 10px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* RESPONSIVE */
+        @media (max-width: 700px) {
+            .app-container { grid-template-columns: 1fr; height: auto; }
+            .sidebar { padding: 20px; flex-direction: row; align-items: center; }
+            .steps-nav { display: none; }
+            .input-grid { grid-template-columns: 1fr; }
+            .actions { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <aside class="sidebar">
+        <div class="brand">
+            <h2>SOP<span style="color:var(--accent)">Analytics</span></h2>
+            <span>Herramienta de Tamizaje</span>
+        </div>
+        <ul class="steps-nav">
+            <li class="step-item active" id="navStep1"><span class="step-number">1</span><span>Datos Biométricos</span></li>
+            <li class="step-item" id="navStep2"><span class="step-number">2</span><span>Sintomatología</span></li>
+            <li class="step-item" id="navStep3"><span class="step-number">3</span><span>Resultados</span></li>
+        </ul>
+        <div class="copyright">&copy; 2025 Univ. Project<br>Powered by Gemini AI ✨</div>
+    </aside>
+
+    <main class="main-content">
+        <div id="inputSection">
+            <h2 class="section-title">Datos del Paciente</h2>
+            <p class="section-subtitle">Ingrese los datos fisiológicos para calcular los marcadores metabólicos.</p>
+
+            <form id="mainForm">
+                <div class="input-grid">
+                    <div class="form-group">
+                        <label>Edad (años)</label>
+                        <input type="number" id="age" placeholder="20" min="12" max="60" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Peso (kg)</label>
+                        <input type="number" id="weight" placeholder="65.5" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Altura (cm)</label>
+                        <input type="number" id="height" placeholder="165" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Cintura (cm)</label>
+                        <input type="number" id="waist" placeholder="80" required>
+                    </div>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <h2 class="section-title">Cuadro Clínico</h2>
+                    <p class="section-subtitle">Seleccione los signos y síntomas presentes en los últimos 6 meses.</p>
+                    
+                    <div class="symptom-grid">
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="30" data-name="Irregularidad Menstrual">
+                            <span class="checkmark">Irregularidad Menstrual (> 35 días)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="25" data-name="Hirsutismo">
+                            <span class="checkmark">Hirsutismo (Exceso de vello)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="15" data-name="Acné Androgénico">
+                            <span class="checkmark">Acné Androgénico</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="15" data-name="Alopecia">
+                            <span class="checkmark">Alopecia (Caída de cabello)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="10" data-name="Acantosis Nigricans">
+                            <span class="checkmark">Acantosis Nigricans (Manchas piel)</span>
+                        </label>
+                        <label class="symptom-card">
+                            <input type="checkbox" class="symptom" value="10" data-name="Herencia Genética">
+                            <span class="checkmark">Antecedentes Familiares</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('mainForm').reset()">Limpiar</button>
+                    <button type="submit" class="btn btn-primary">Analizar Riesgo &rarr;</button>
+                </div>
+            </form>
+        </div>
+
+        <div id="resultsView">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h2>Análisis Completado</h2>
+                <p style="color:var(--text-sec)">Basado en Criterios de Rotterdam</p>
+            </div>
+
+            <div class="gauge-wrapper">
+                <div class="gauge-bg"></div>
+                <div class="gauge-fill"></div>
+                <div class="gauge-needle" id="needle"></div>
+                <div class="gauge-hub"></div>
+            </div>
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 2rem; margin: 10px 0;" id="riskTitle">Calculando...</h1>
+                <p style="color: var(--text-sec);" id="riskSubtitle">Probabilidad estimada</p>
+            </div>
+
+            <div class="metrics-container">
+                <div class="metric-card">
+                    <span class="metric-val" id="displayIMC">-</span>
+                    <span class="metric-label">IMC (kg/m²)</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-val" id="displayICA">-</span>
+                    <span class="metric-label">ICA (Cintura/Altura)</span>
+                </div>
+            </div>
+
+            <div class="advice-box" id="adviceBox"></div>
+
+            <div class="ai-section">
+                <div style="display: flex; justify-content: center; margin-bottom: 15px;">
+                     <button type="button" class="btn btn-ai" id="aiButton" onclick="generateAIPlan()">
+                        <div class="loading-spinner" id="aiSpinner"></div>
+                        <span id="aiBtnText">✨ Generar Plan de Bienestar con IA</span>
+                    </button>
+                </div>
+                
+                <div id="aiResult" class="ai-result-box">
+                    <h3><span style="font-size:1.5rem;">✨</span> Recomendaciones IA (Simulación)</h3>
+                    <div id="aiContent"></div>
+                </div>
+            </div>
+
+            <div class="actions" style="margin-top: 30px;">
+                <button type="button" class="btn btn-ghost" onclick="location.reload()">Nueva Evaluación</button>
+                <button type="button" class="btn btn-primary" onclick="window.print()">Imprimir Informe</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    let patientData = {};
+
+    document.getElementById('mainForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const age = document.getElementById('age').value;
+        const weight = parseFloat(document.getElementById('weight').value);
+        const heightCm = parseFloat(document.getElementById('height').value);
+        const waist = parseFloat(document.getElementById('waist').value);
+        const heightM = heightCm / 100;
+
+        if(!weight || !heightCm) return;
+
+        // Fórmulas Matemáticas
+        const imc = weight / (heightM * heightM);
+        const ica = waist / heightCm;
+
+        let score = 0;
+        let symptomsList = [];
+
+        document.querySelectorAll('.symptom:checked').forEach(el => {
+            score += parseInt(el.value);
+            symptomsList.push(el.getAttribute('data-name'));
+        });
+
+        if(imc > 25) score += 5;
+        if(imc > 30) score += 10;
+        if(ica > 0.5) score += 10;
+        if(ica > 0.6) score += 15;
+
+        let riskPercentage = (score / 80) * 100; 
+        if (riskPercentage > 100) riskPercentage = 100;
+        const rotation = (riskPercentage * 1.8) - 90; 
+
+        let title, subtitle, advice, adviceClass;
+
+        if (score < 25) {
+            title = "Riesgo Bajo";
+            subtitle = "Perfil asintomático";
+            adviceClass = "";
+            advice = "<strong>Estado:</strong> Tus marcadores son saludables. Continúa con tus hábitos actuales.";
+            document.documentElement.style.setProperty('--success', '#00b894');
+        } else if (score < 50) {
+            title = "Riesgo Moderado";
+            subtitle = "Signos de alerta presentes";
+            adviceClass = "med-risk";
+            advice = "<strong>Atención:</strong> Presentas criterios compatibles con desbalance hormonal. Se sugiere monitoreo.";
+        } else {
+            title = "Riesgo Alto";
+            subtitle = "Alta concordancia clínica";
+            adviceClass = "high-risk";
+            advice = "<strong>Acción Requerida:</strong> Tus síntomas sugieren fuertemente SOP. Agenda cita con Endocrinología.";
+        }
+
+        patientData = { age, bmi: imc.toFixed(1), risk: title, symptoms: symptomsList };
+
+        // Update DOM
+        document.getElementById('inputSection').style.display = 'none';
+        document.getElementById('resultsView').style.display = 'block';
+        document.getElementById('riskTitle').innerText = title;
+        document.getElementById('riskSubtitle').innerText = subtitle;
+        document.getElementById('displayIMC').innerText = imc.toFixed(1);
+        document.getElementById('displayICA').innerText = ica.toFixed(2);
+        
+        const adviceBox = document.getElementById('adviceBox');
+        adviceBox.innerHTML = advice;
+        adviceBox.className = 'advice-box ' + adviceClass;
+
+        document.getElementById('navStep1').classList.remove('active');
+        document.getElementById('navStep3').classList.add('active');
+
+        setTimeout(() => {
+            document.getElementById('needle').style.transform = `rotate(${rotation}deg)`;
+        }, 100);
+    });
+
+    // --- FUNCIÓN SIMULADA DE IA (MOCK) ---
+    // En producción, aquí llamarías a la API de Gemini real.
+    function generateAIPlan() {
+        const btn = document.getElementById('aiButton');
+        const spinner = document.getElementById('aiSpinner');
+        const btnText = document.getElementById('aiBtnText');
+        const resultBox = document.getElementById('aiResult');
+        const contentDiv = document.getElementById('aiContent');
+
+        btn.disabled = true;
+        spinner.style.display = 'inline-block';
+        btnText.innerText = "Analizando datos...";
+        resultBox.style.display = 'none';
+
+        // Simulamos un retraso de red de 2.5 segundos
+        setTimeout(() => {
+            const mockResponse = `
+                <p>Basado en tu perfil de <b>${patientData.risk}</b> y un IMC de ${patientData.bmi}, aquí tienes una sugerencia de estilo de vida:</p>
+                <ul>
+                    <li>🥗 <b>Nutrición:</b> Prioriza carbohidratos de bajo índice glucémico (avena, legumbres) para regular la insulina. Aumenta el consumo de Omega-3.</li>
+                    <li>🏃‍♀️ <b>Ejercicio:</b> Integra entrenamiento de fuerza 3 veces por semana; el músculo ayuda a metabolizar la glucosa mejor que el cardio solo.</li>
+                    <li>🧘‍♀️ <b>Bienestar:</b> Tus síntomas de ${patientData.symptoms.length > 0 ? patientData.symptoms[0] : 'estrés'} podrían mejorar con 7-8 horas de sueño regular.</li>
+                </ul>
+                <p><i>"Pequeños cambios sostenibles crean grandes resultados hormonales."</i></p>
+            `;
+            
+            contentDiv.innerHTML = mockResponse;
+            resultBox.style.display = 'block';
+            btnText.innerText = "✨ Plan Generado";
+            spinner.style.display = 'none';
+            btn.disabled = false;
+            resultBox.scrollIntoView({ behavior: 'smooth' });
+        }, 2500);
+    }
+</script>
+
+</body>
+</html>
